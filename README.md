@@ -43,15 +43,18 @@ docker build -t jetson-boot-env .
 ```
 
 ## Step 4: Run the Docker Container
-Run the container, passing through the USB devices and mounting this folder so it can install the `.deb` file.
+Create directories to persist the large SDK downloads so they aren't lost when the container stops, then run the container:
 
 **For Linux and WSL2:**
 ```bash
+mkdir -p sdkm_downloads nvidia_sdk
 docker run -it \
     --privileged \
     -v /dev/bus/usb:/dev/bus/usb \
     -v /dev:/dev \
     -v $(pwd):/sdk \
+    -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
+    -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
     --net=host \
     jetson-boot-env
 ```

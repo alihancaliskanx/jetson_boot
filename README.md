@@ -42,27 +42,36 @@ In this folder, open a terminal and run:
 docker build -t jetson-boot-env .
 ```
 
-## Step 4: Run the Docker Container
-Create directories to persist the large SDK downloads so they aren't lost when the container stops, then run the container:
-
-**For Linux and WSL2:**
+## Step 4: Grant Display Permission (Linux)
+Allow Docker to draw windows on your local X11/Wayland display by running:
 ```bash
-mkdir -p sdkm_downloads nvidia_sdk
-docker run -it \
-    --privileged \
-    -v /dev/bus/usb:/dev/bus/usb \
-    -v /dev:/dev \
-    -v $(pwd):/sdk \
-    -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
-    -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
-    --net=host \
-    jetson-boot-env
+xhost +
 ```
 
-## Step 5: Flash the Jetson
-Once the container starts, it will automatically install the SDK Manager `.deb` file found in the `/sdk` directory and launch the SDK Manager CLI.
+## Step 5: Run the Docker Container (Native GUI)
+Create directories to persist the large SDK downloads so they aren't lost when the container stops, then run the container with X11 forwarding:
 
-Follow the on-screen instructions in the CLI to login, select **JetPack 6 (Ubuntu 22.04)**, and flash your Orin Nano.
+**For Linux:**
+```bash
+mkdir -p sdkm_downloads nvidia_sdk && \
+sudo docker run -it --rm \
+  --privileged \
+  --security-opt apparmor=unconfined \
+  --ipc=host \
+  -e DISPLAY=$DISPLAY \
+  -e QT_X11_NO_MITSHM=1 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /dev/bus/usb:/dev/bus/usb \
+  -v /dev:/dev \
+  -v $(pwd):/sdk \
+  -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
+  -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
+  --net=host \
+  --entrypoint bash \
+  jetson-boot-env -c "sdkmanager; sleep infinity"
+```
+
+Once the container starts, the NVIDIA SDK Manager window should pop up directly on your desktop. When you are finished, press `Ctrl+C` in the terminal to close the container.
 
 ## Notes
 * You can pass specific arguments to the sdkmanager CLI by appending them to the docker run command, for example: `docker run ... jetson-boot-env --cli --login-type devzone`.

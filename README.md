@@ -84,3 +84,9 @@ Once the container starts, the NVIDIA SDK Manager window should pop up directly 
 ## Notes
 * You can pass specific arguments to the sdkmanager CLI by appending them to the docker run command, for example: `docker run ... jetson-boot-env --cli --login-type devzone`.
 * The container runs as a non-root user `nvidia` with `sudo` privileges.
+
+## Troubleshooting
+* **Host Components Installation Fails:** If you encounter errors while installing "Host Components" in the SDK Manager, the downloaded files might be corrupted. You can fix this by clearing the mapped directory on your host:
+  ```bash
+  sudo rm -rf nvidia_sdk/*
+  ```

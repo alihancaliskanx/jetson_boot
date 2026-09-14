@@ -42,13 +42,14 @@ In this folder, open a terminal and run:
 docker build -t jetson-boot-env .
 ```
 
-## Step 4: Enable NFS Kernel Module
-Because the Jetson Orin Nano uses `initrd` flashing over a temporary network interface, your host machine must have the NFS kernel module enabled.
-Run the following on your host machine:
+## Step 4: Enable NFS Server on Host (Required for Jetson Flash)
+Because the Jetson Orin Nano uses `initrd` flashing over a temporary network interface, the NFS server must be running. Due to Docker networking limitations, it is best to run this natively on your host machine.
+Run the following on your Linux host:
 ```bash
-sudo modprobe nfsd
+sudo touch /etc/exports
+sudo systemctl enable --now rpcbind nfs-server
 ```
-*(If the module is not found, you may need to install your distro's NFS utilities package first, e.g., `sudo pacman -S nfs-utils` on Arch or `sudo apt install nfs-kernel-server` on Ubuntu).*
+*(If the command fails, you may need to install your distro's NFS utilities package first, e.g., `sudo pacman -S nfs-utils` on Arch or `sudo apt install nfs-kernel-server` on Ubuntu).*
 
 ## Step 5: Grant Display Permission (Linux)
 Allow Docker to draw windows on your local X11/Wayland display by running:
@@ -71,6 +72,7 @@ sudo docker run -it --rm \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v /dev/bus/usb:/dev/bus/usb \
   -v /dev:/dev \
+  -v /etc/exports:/etc/exports \
   -v $(pwd):/sdk \
   -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
   -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \

@@ -42,13 +42,21 @@ In this folder, open a terminal and run:
 docker build -t jetson-boot-env .
 ```
 
-## Step 4: Grant Display Permission (Linux)
+## Step 4: Enable NFS Kernel Module
+Because the Jetson Orin Nano uses `initrd` flashing over a temporary network interface, your host machine must have the NFS kernel module enabled.
+Run the following on your host machine:
+```bash
+sudo modprobe nfsd
+```
+*(If the module is not found, you may need to install your distro's NFS utilities package first, e.g., `sudo pacman -S nfs-utils` on Arch or `sudo apt install nfs-kernel-server` on Ubuntu).*
+
+## Step 5: Grant Display Permission (Linux)
 Allow Docker to draw windows on your local X11/Wayland display by running:
 ```bash
 xhost +
 ```
 
-## Step 5: Run the Docker Container (Native GUI)
+## Step 6: Run the Docker Container (Native GUI)
 Create directories to persist the large SDK downloads so they aren't lost when the container stops, then run the container with X11 forwarding:
 
 **For Linux:**

@@ -42,14 +42,12 @@ In this folder, open a terminal and run:
 docker build -t jetson-boot-env .
 ```
 
-## Step 4: Enable NFS Server on Host (Required for Jetson Flash)
-Because the Jetson Orin Nano uses `initrd` flashing over a temporary network interface, the NFS server must be running. Due to Docker networking limitations, it is best to run this natively on your host machine.
-Run the following on your Linux host:
+## Step 4: Stop Host NFS Server (Conflict Prevention)
+To ensure the container's internal NFS server can bind to the correct ports without conflicts, disable any running NFS server on your host machine:
 ```bash
-sudo touch /etc/exports
-sudo systemctl enable --now rpcbind nfs-server
+sudo systemctl stop rpcbind nfs-server
+sudo systemctl disable rpcbind nfs-server
 ```
-*(If the command fails, you may need to install your distro's NFS utilities package first, e.g., `sudo pacman -S nfs-utils` on Arch or `sudo apt install nfs-kernel-server` on Ubuntu).*
 
 ## Step 5: Grant Display Permission (Linux)
 Allow Docker to draw windows on your local X11/Wayland display by running:
@@ -72,7 +70,7 @@ sudo docker run -it --rm \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v /dev/bus/usb:/dev/bus/usb \
   -v /dev:/dev \
-  -v /etc/exports:/etc/exports \
+  -v /lib/modules:/lib/modules \
   -v $(pwd):/sdk \
   -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
   -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
@@ -92,3 +90,4 @@ Once the container starts, the NVIDIA SDK Manager window should pop up directly 
   ```bash
   sudo rm -rf nvidia_sdk/*
   ```
+* **Using a Proxy:** If you are behind a proxy, you can pass proxy variables directly to the container in Step 6 by adding `-e http_proxy=http://<proxy-ip>:<port>` and `-e https_proxy=http://<proxy-ip>:<port>`.

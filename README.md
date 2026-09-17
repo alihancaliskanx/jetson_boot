@@ -1,4 +1,4 @@
-# Jetson Orin Nano Boot Environment
+# Jetson Orin Nano Boot Environment (Recently, it is not working)
 
 This repository provides a Dockerized environment for flashing and configuring the Nvidia Jetson Orin Nano via the Nvidia SDK Manager. By running this in a Docker container, it ensures that your host operating system (whether it is Arch Linux, another Linux distro, or Windows via WSL2) remains clean and unaffected by SDK dependencies.
 
@@ -90,4 +90,13 @@ Once the container starts, the NVIDIA SDK Manager window should pop up directly 
   ```bash
   sudo rm -rf nvidia_sdk/*
   ```
-* **Using a Proxy:** If you are behind a proxy, you can pass proxy variables directly to the container in Step 6 by adding `-e http_proxy=http://<proxy-ip>:<port>` and `-e https_proxy=http://<proxy-ip>:<port>`.
+
+## Proxy Configuration
+If you are behind a proxy (e.g., using a local proxy at `192.168.49.1:8000`), you must pass the proxy variables directly to the container during Step 6. Add the following flags to your `docker run` command:
+```bash
+  -e http_proxy=http://<proxy-ip>:<port> \
+  -e https_proxy=http://<proxy-ip>:<port> \
+  -e HTTP_PROXY=http://<proxy-ip>:<port> \
+  -e HTTPS_PROXY=http://<proxy-ip>:<port>
+```
+The entrypoint script is designed to automatically configure the internal `apt` and network tools to route traffic through these variables seamlessly.

@@ -31,10 +31,12 @@
 # Install SDK Manager if a .deb file is mapped
 if ls /sdk/sdkmanager*.deb 1> /dev/null 2>&1; then
     echo "SDK Manager deb file found in /sdk. Installing..."
-    sudo apt-get update
+    echo "Acquire::http::Proxy \"${http_proxy}\";" | sudo tee /etc/apt/apt.conf.d/99proxy > /dev/null
+    echo "Acquire::https::Proxy \"${https_proxy}\";" | sudo tee -a /etc/apt/apt.conf.d/99proxy > /dev/null
+    sudo -E apt-get update
     # Install the first matching deb file
     DEB_FILE=$(ls /sdk/sdkmanager*.deb | head -n 1)
-    sudo apt-get install -y "$DEB_FILE"
+    sudo -E apt-get install -y "$DEB_FILE"
 fi
 
 if command -v sdkmanager &> /dev/null; then

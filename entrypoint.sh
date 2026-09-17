@@ -1,6 +1,33 @@
 #!/bin/bash
 # entrypoint.sh
 
+# Start NFS background watcher to prevent SDK Manager from breaking it during install
+(
+    while true; do
+        if [ -f /etc/init.d/nfs-kernel-server ] && ! grep -q 'rpc.nfsd 0' /etc/init.d/nfs-kernel-server; then
+            sudo sed -i 's/--name nfsd --user 0 --signal 2/--name nfsd --user 0 --signal 2; rpc.nfsd 0/g' /etc/init.d/nfs-kernel-server
+        fi
+        sleep 1
+    done
+) &
+
+# Network Autobot: Simulates Ubuntu NetworkManager & UFW bypass inside Docker
+(
+    while true; do
+        for iface in $(ls /sys/class/net 2>/dev/null | grep -E "^(usb|enp.*u.*)"); do
+            ip link set dev "$iface" up 2>/dev/null
+            if ! ip addr show "$iface" | grep -q "192.168.55.100"; then
+                ip addr add 192.168.55.100/24 dev "$iface" 2>/dev/null
+            fi
+            if ! ip addr show "$iface" | grep -q "fc00:1:1:0::1"; then
+                ip -6 addr add fc00:1:1:0::1/64 dev "$iface" 2>/dev/null
+            fi
+            iptables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
+            ip6tables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
+        done
+        sleep 1
+    done
+) &
 # Install SDK Manager if a .deb file is mapped
 if ls /sdk/sdkmanager*.deb 1> /dev/null 2>&1; then
     echo "SDK Manager deb file found in /sdk. Installing..."
@@ -13,9 +40,9 @@ fi
 if command -v sdkmanager &> /dev/null; then
     echo "SDK Manager is installed. Starting..."
     if [ $# -eq 0 ]; then
-        exec sdkmanager --cli
+        exec sdkmanager
     else
-        exec sdkmanager "$@"
+        exec "$@"
     fi
 else
     echo "=========================================================="
@@ -26,3 +53,4 @@ else
     echo "=========================================================="
     exec /bin/bash
 fi
+

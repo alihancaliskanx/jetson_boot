@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     xz-utils \
     bzip2 \
+    nfs-kernel-server \
+    && sed -i 's/--name nfsd --user 0 --signal 2/--name nfsd --user 0 --signal 2; rpc.nfsd 0/g' /etc/init.d/nfs-kernel-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Set locale (Required by many NVIDIA scripts)
@@ -39,13 +41,6 @@ RUN useradd -m -s /bin/bash nvidia && \
     echo "nvidia:nvidia" | chpasswd && \
     adduser nvidia sudo && \
     echo "nvidia ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-# Download and install SDK Manager directly using the provided token link
-RUN wget "https://developer.download.nvidia.com/sdkmanager/secure/clients/sdkmanager-2.4.1.13536/sdkmanager_2.4.1-13536_amd64.deb?t=eyJscyI6IndlYnNpdGUiLCJsc2QiOiJkZXZlbG9wZXIubnZpZGlhLmNvbS9zZGstbWFuYWdlciJ9&__token__=exp=1789295113~hmac=6cad4e46632d319961d08cd8662e2dce38d7f52fdcac78cae0cc496473515e03" -O /tmp/sdkmanager.deb && \
-    apt-get update && \
-    apt-get install -y /tmp/sdkmanager.deb && \
-    rm -f /tmp/sdkmanager.deb && \
-    rm -rf /var/lib/apt/lists/*
 
 # Set up entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

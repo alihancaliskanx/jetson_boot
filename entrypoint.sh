@@ -56,3 +56,15 @@ else
     exec /bin/bash
 fi
 
+
+# Patch NVIDIA's Docker detection to force NFS server setup inside container
+(
+    while true; do
+        if [ -f /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func ]; then
+            if ! grep -q "is_inside_docker() {" /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func; then
+                sudo sed -i 's/is_inside_docker()/is_inside_docker() {\n    return 1\n}/' /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func
+            fi
+        fi
+        sleep 5
+    done
+) &

@@ -1,9 +1,12 @@
 #!/bin/bash
 # entrypoint.sh
 
-# Start NFS background watcher to prevent SDK Manager from breaking it during install
+# Start NFS background watcher & RPCbind to prevent SDK Manager from breaking it during install
 (
     while true; do
+        if ! pgrep -x rpcbind > /dev/null; then
+            sudo service rpcbind start > /dev/null 2>&1 || sudo rpcbind > /dev/null 2>&1
+        fi
         if [ -f /etc/init.d/nfs-kernel-server ] && ! grep -q 'rpc.nfsd 0' /etc/init.d/nfs-kernel-server; then
             sudo sed -i 's/--name nfsd --user 0 --signal 2/--name nfsd --user 0 --signal 2; rpc.nfsd 0/g' /etc/init.d/nfs-kernel-server
         fi
@@ -39,6 +42,18 @@ if ls /sdk/sdkmanager*.deb 1> /dev/null 2>&1; then
     sudo -E apt-get install -y "$DEB_FILE"
 fi
 
+# Patch NVIDIA's Docker detection to force NFS server setup inside container
+(
+    while true; do
+        if [ -f /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func ]; then
+            if ! grep -q "is_inside_docker() {" /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func; then
+                sudo sed -i 's/is_inside_docker()/is_inside_docker() {\n    return 1\n}/' /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func
+            fi
+        fi
+        sleep 5
+    done
+) &
+
 if command -v sdkmanager &> /dev/null; then
     echo "SDK Manager is installed. Starting..."
     if [ $# -eq 0 ]; then
@@ -57,14 +72,4 @@ else
 fi
 
 
-# Patch NVIDIA's Docker detection to force NFS server setup inside container
-(
-    while true; do
-        if [ -f /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func ]; then
-            if ! grep -q "is_inside_docker() {" /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func; then
-                sudo sed -i 's/is_inside_docker()/is_inside_docker() {\n    return 1\n}/' /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func
-            fi
-        fi
-        sleep 5
-    done
-) &
+

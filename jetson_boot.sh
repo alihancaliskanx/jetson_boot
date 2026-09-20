@@ -98,5 +98,5 @@ else
       -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
       -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
       --net=host \
-      $IMAGE_NAME sdkmanager --no-sandbox
+      $IMAGE_NAME bash -c "sdkmanager; sleep infinity"
 fi

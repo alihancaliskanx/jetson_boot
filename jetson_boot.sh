@@ -97,6 +97,5 @@ else
       -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
       -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
       --net=host \
-      --entrypoint bash \
-      $IMAGE_NAME -c "sdkmanager; sleep infinity"
+      $IMAGE_NAME
 fi

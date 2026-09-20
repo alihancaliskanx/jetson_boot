@@ -1,6 +1,6 @@
 # Jetson Orin Nano Boot Environment (Recently, it is not working)
 
-This repository provides a Dockerized environment for flashing and configuring the Nvidia Jetson Orin Nano via the Nvidia SDK Manager. By running this in a Docker container, it ensures that your host operating system (whether it is Arch Linux, another Linux distro, or Windows via WSL2) remains clean and unaffected by SDK dependencies.
+This repository provides a Dockerized, fully automated environment for flashing and configuring the Nvidia Jetson Orin Nano via the Nvidia SDK Manager. By running this in a Docker container, it ensures that your host operating system (whether it is Arch Linux, another Linux distro, or Windows via WSL2) remains clean and unaffected by SDK dependencies.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ This repository provides a Dockerized environment for flashing and configuring t
 ## Step 1: Download SDK Manager
 NVIDIA requires a developer account to download the SDK Manager.
 1. Go to the [NVIDIA SDK Manager Download Page](https://developer.nvidia.com/nvidia-sdk-manager).
-2. Download the `.deb` file for Ubuntu (e.g., `sdkmanager_1.9.4-10816_amd64.deb`).
+2. Download the `.deb` file for Ubuntu (e.g., `sdkmanager_2.x.x_amd64.deb`).
 3. Place the `.deb` file directly in this folder (`jetson_boot`).
 
 ## Step 2: Put Jetson in Recovery Mode
@@ -36,54 +36,28 @@ usbipd attach --wsl --busid <BUS_ID>
 ```
 *(Replace `<BUS_ID>` with the bus ID of the NVIDIA device from the list).*
 
-## Step 3: Build the Docker Image
-In this folder, open a terminal and run:
+## Step 3: Run the Automation Script (One-Shot!)
+We have fully automated the image building, display permissions, NFS/rpcbind host conflict resolution, and container launching into a single script.
+
+Simply open a terminal in this folder and run:
 ```bash
-docker build -t jetson-boot-env .
+./jetson_boot.sh
 ```
 
-## Step 4: Stop Host NFS Server (Conflict Prevention)
-To ensure the container's internal NFS server can bind to the correct ports without conflicts, disable any running NFS server on your host machine:
-```bash
-sudo systemctl stop rpcbind nfs-server
-sudo systemctl disable rpcbind nfs-server
-```
+The script will:
+* Build the docker image automatically if it doesn't exist.
+* Check if the SDK Manager `.deb` file is present.
+* Stop conflicting host services (`rpcbind.socket`, `rpcbind`, `nfs-server`) safely.
+* Load the necessary kernel modules (`nfsd`).
+* Set up X11 display permissions.
+* Automatically handle network spoofing and zombie process cleanup internally.
+* Launch the SDK Manager GUI on your screen.
 
-## Step 5: Grant Display Permission (Linux)
-Allow Docker to draw windows on your local X11/Wayland display by running:
-```bash
-xhost +
-```
-
-## Step 6: Run the Docker Container (Native GUI)
-Create directories to persist the large SDK downloads so they aren't lost when the container stops, then run the container with X11 forwarding:
-
-**For Linux:**
-```bash
-mkdir -p sdkm_downloads nvidia_sdk && \
-sudo docker run -it --rm \
-  --privileged \
-  --security-opt apparmor=unconfined \
-  --ipc=host \
-  -e DISPLAY=$DISPLAY \
-  -e QT_X11_NO_MITSHM=1 \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /dev/bus/usb:/dev/bus/usb \
-  -v /dev:/dev \
-  -v /lib/modules:/lib/modules \
-  -v $(pwd):/sdk \
-  -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
-  -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
-  --net=host \
-  --entrypoint bash \
-  jetson-boot-env -c "sdkmanager; sleep infinity"
-```
-
-Once the container starts, the NVIDIA SDK Manager window should pop up directly on your desktop. When you are finished, press `Ctrl+C` in the terminal to close the container.
+Once the UI opens, just follow the SDK Manager steps. The flashing process and the subsequent Target Components installation (via SSH) will execute seamlessly.
 
 ## Notes
-* You can pass specific arguments to the sdkmanager CLI by appending them to the docker run command, for example: `docker run ... jetson-boot-env --cli --login-type devzone`.
 * The container runs as a non-root user `nvidia` with `sudo` privileges.
+* When you close the SDK Manager UI, the container will automatically delete itself cleanly (`--rm`), preserving your disk space.
 
 ## Troubleshooting
 * **Host Components Installation Fails:** If you encounter errors while installing "Host Components" in the SDK Manager, the downloaded files might be corrupted. You can fix this by clearing the mapped directory on your host:
@@ -92,11 +66,8 @@ Once the container starts, the NVIDIA SDK Manager window should pop up directly 
   ```
 
 ## Proxy Configuration
-If you are behind a proxy (e.g., using a local proxy at `192.168.49.1:8000`), you must pass the proxy variables directly to the container during Step 6. Add the following flags to your `docker run` command:
+If you are behind a proxy, you can modify the `docker run` command inside `jetson_boot.sh` by adding:
 ```bash
   -e http_proxy=http://<proxy-ip>:<port> \
   -e https_proxy=http://<proxy-ip>:<port> \
-  -e HTTP_PROXY=http://<proxy-ip>:<port> \
-  -e HTTPS_PROXY=http://<proxy-ip>:<port>
 ```
-The entrypoint script is designed to automatically configure the internal `apt` and network tools to route traffic through these variables seamlessly.

@@ -72,6 +72,10 @@ fi
 echo "📁 İndirme klasörleri oluşturuluyor/kontrol ediliyor..."
 mkdir -p sdkm_downloads nvidia_sdk
 
+# 6.5 NFS Çekirdek Modülünü Yükle (Flash işlemi için şart)
+echo "🔧 Çekirdeğe NFS modülü yükleniyor (modprobe nfsd)..."
+sudo modprobe nfsd || true
+
 # 7. Docker Container'ı Başlat
 echo "🚀 Docker container başlatılıyor..."
 CONTAINER_NAME="jetson-sdk-manager"

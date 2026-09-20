@@ -45,9 +45,9 @@ fi
 
 # 4. Host NFS sunucusunun çakışmasını önleme
 echo "🔍 NFS sunucu durumu kontrol ediliyor..."
-for service in rpcbind nfs-server; do
+for service in rpcbind rpcbind.socket nfs-server; do
     # Servisin sistemde var olup olmadığına bakıyoruz
-    if systemctl list-unit-files | grep -q "^$service.service"; then
+    if systemctl list-unit-files | grep -q "^$service"; then
         if systemctl is-active --quiet $service; then
             echo "🛑 Çakışmayı önlemek için host üzerindeki $service durduruluyor..."
             sudo systemctl stop $service

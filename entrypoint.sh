@@ -18,17 +18,17 @@
 (
     while true; do
         for iface in $(ls /sys/class/net 2>/dev/null | grep -E "^(usb|enp.*u.*)"); do
-            sudo ip link set dev "$iface" up 2>/dev/null
             if ! ip addr show "$iface" | grep -q "192.168.55.100"; then
+                sudo ip link set dev "$iface" up 2>/dev/null
                 sudo ip addr add 192.168.55.100/24 dev "$iface" 2>/dev/null
+                sudo iptables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
+                sudo ip6tables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
             fi
             if ! ip addr show "$iface" | grep -q "fc00:1:1:0::1"; then
                 sudo ip -6 addr add fc00:1:1:0::1/64 dev "$iface" 2>/dev/null
             fi
-            sudo iptables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
-            sudo ip6tables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
         done
-        sleep 1
+        sleep 2
     done
 ) &
 # Install SDK Manager if a .deb file is mapped
@@ -58,9 +58,9 @@ fi
 if command -v sdkmanager &> /dev/null; then
     echo "SDK Manager is installed. Starting..."
     if [ $# -eq 0 ]; then
-        exec sdkmanager
+        sdkmanager
     else
-        exec "$@"
+        "$@"
     fi
 else
     echo "=========================================================="

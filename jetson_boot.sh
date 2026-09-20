@@ -96,6 +96,7 @@ else
       -v $(pwd):/sdk \
       -v $(pwd)/sdkm_downloads:/home/nvidia/Downloads/nvidia/sdkm_downloads \
       -v $(pwd)/nvidia_sdk:/home/nvidia/nvidia/nvidia_sdk \
+      -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
       --net=host \
-      $IMAGE_NAME
+      $IMAGE_NAME sdkmanager --no-sandbox
 fi

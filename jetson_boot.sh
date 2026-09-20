@@ -86,7 +86,7 @@ if docker ps --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
     sudo docker exec -it $CONTAINER_NAME bash -c "sdkmanager"
 else
     # Container çalışmıyorsa başlat
-    sudo docker run -it --rm \
+    sudo docker run -it \
       --name $CONTAINER_NAME \
       --privileged \
       --security-opt apparmor=unconfined \

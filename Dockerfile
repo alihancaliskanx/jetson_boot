@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     dnsutils \
     network-manager \
     iputils-ping \
+    dnsmasq \
     libcanberra-gtk-module \
     libcanberra-gtk3-module \
     libnss3 \

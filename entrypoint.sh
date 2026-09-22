@@ -40,7 +40,27 @@ if ls /sdk/sdkmanager*.deb 1> /dev/null 2>&1; then
     # Install the first matching deb file
     DEB_FILE=$(ls /sdk/sdkmanager*.deb | head -n 1)
     sudo -E apt-get install -y "$DEB_FILE"
+    
+    # Inject Antigravity Custom Setup Script to bypass ISP and Firewall blocks
+    if [ -f /custom_setup.sh ]; then
+        echo "Injecting custom device setup script..."
+        sudo cp /custom_setup.sh /opt/nvidia/sdkmanager/resources/app/scripts/linux/device_mode_host_setup.sh
+        sudo chmod +x /opt/nvidia/sdkmanager/resources/app/scripts/linux/device_mode_host_setup.sh
+    fi
 fi
+
+# Workaround for SDK Manager hanging at 99% (rpc.mountd pipe leak)
+(
+    while true; do
+        if pgrep -x "rpc.mountd" > /dev/null; then
+            # If flash script is no longer running, kill rpc.mountd to close the pipe and unhang SDK Manager
+            if ! pgrep -f "flash.sh" > /dev/null; then
+                sudo killall rpc.mountd 2>/dev/null || true
+            fi
+        fi
+        sleep 5
+    done
+) &
 
 # Patch NVIDIA's Docker detection to force NFS server setup inside container
 (

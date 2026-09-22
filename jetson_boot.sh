@@ -1,91 +1,90 @@
 #!/bin/bash
 
-# Hata durumunda betiğin çalışmasını durdur (isteğe bağlı, bazı yerlerde manuel kontrol ediyoruz)
+# Stop execution on error (optional, we handle some manually)
 set -e
 
-# Proje dizininde olduğumuzdan emin olalım
+# Ensure we are in the project directory
 cd "$(dirname "$0")" || exit 1
 
-echo "🚀 Jetson Boot Otomasyon Betiği Başlıyor..."
+echo "🚀 Jetson Boot Automation Script Starting..."
 
-# 1. SDK Manager .deb dosyası kontrolü
-echo "🔍 SDK Manager dosyası aranıyor..."
+# 1. Check for SDK Manager .deb file
+echo "🔍 Looking for SDK Manager deb file..."
 if ! ls sdkmanager_*.deb 1> /dev/null 2>&1; then
-    echo "❌ HATA: SDK Manager .deb dosyası bulunamadı!"
-    echo "Lütfen NVIDIA sitesinden indirip 'jetson_boot' klasörüne koyun."
+    echo "❌ ERROR: SDK Manager .deb file not found!"
+    echo "Please download it from the NVIDIA website and place it in the 'jetson_boot' folder."
     exit 1
 else
-    echo "✅ SDK Manager .deb dosyası mevcut."
+    echo "✅ SDK Manager .deb file is present."
 fi
 
-# 2. Jetson cihazının Recovery modunda olup olmadığını kontrol et
-echo "🔍 Jetson cihazı (Recovery Modunda) aranıyor..."
+# 2. Check if Jetson device is in Recovery mode
+echo "🔍 Looking for Jetson device (in Recovery Mode)..."
 if ! lsusb | grep -qi "Nvidia"; then
-    echo "⚠️ UYARI: Jetson cihazı bulunamadı!"
-    echo "Lütfen Jetson'ı Recovery Moduna (FC REC ile GND pinlerini birleştirerek) alıp Type-C ile bağladığınızdan emin olun."
-    read -p "Yine de devam etmek istiyor musunuz? (E/h): " continue_choice
-    if [[ "$continue_choice" == "h" || "$continue_choice" == "H" ]]; then
-        echo "🛑 İşlem iptal edildi."
+    echo "⚠️ WARNING: Jetson device not found!"
+    echo "Please ensure your Jetson is in Recovery Mode (FC REC and GND pins shorted) and connected via Type-C."
+    read -p "Do you want to continue anyway? (y/N): " continue_choice
+    if [[ "$continue_choice" != "y" && "$continue_choice" != "Y" ]]; then
+        echo "🛑 Operation aborted."
         exit 1
     fi
 else
-    echo "✅ Jetson cihazı bağlı (NVIDIA Corp. bulundu)."
+    echo "✅ Jetson device connected (NVIDIA Corp. found)."
 fi
 
-# 3. Docker imajı kontrolü ve derlenmesi
+# 3. Check and build Docker image
 IMAGE_NAME="jetson-boot-env"
-echo "🔍 Docker imajı kontrol ediliyor..."
+echo "🔍 Checking Docker image..."
 if [[ "$(docker images -q $IMAGE_NAME 2> /dev/null)" == "" ]]; then
-    echo "🐳 Docker imajı ($IMAGE_NAME) bulunamadı. Derleniyor..."
+    echo "🐳 Docker image ($IMAGE_NAME) not found. Building..."
     docker build -t $IMAGE_NAME .
-    echo "✅ Docker imajı başarıyla derlendi."
+    echo "✅ Docker image successfully built."
 else
-    echo "✅ Docker imajı ($IMAGE_NAME) zaten mevcut. Derleme atlanıyor."
+    echo "✅ Docker image ($IMAGE_NAME) already exists. Skipping build."
 fi
 
-# 4. Host NFS sunucusunun çakışmasını önleme
-echo "🔍 NFS sunucu durumu kontrol ediliyor..."
+# 4. Prevent conflict with host NFS server
+echo "🔍 Checking NFS server status..."
 for service in rpcbind rpcbind.socket nfs-server; do
-    # Servisin sistemde var olup olmadığına bakıyoruz
     if systemctl list-unit-files | grep -q "^$service"; then
         if systemctl is-active --quiet $service; then
-            echo "🛑 Çakışmayı önlemek için host üzerindeki $service durduruluyor..."
+            echo "🛑 Stopping $service on host to prevent conflicts..."
             sudo systemctl stop $service
             sudo systemctl disable $service
-            echo "✅ $service durduruldu ve devre dışı bırakıldı."
+            echo "✅ $service stopped and disabled."
         else
-            echo "✅ $service zaten çalışmıyor."
+            echo "✅ $service is already stopped."
         fi
     fi
 done
 
-# 5. Ekran (X11) izinleri
-echo "🔍 Display izinleri kontrol ediliyor..."
+# 5. Display (X11) permissions
+echo "🔍 Checking Display permissions..."
 if ! xhost | grep -q "access control disabled"; then
-    echo "🖥️ X11 display izinleri veriliyor..."
+    echo "🖥️ Granting X11 display permissions..."
     xhost +
 else
-    echo "✅ X11 display izinleri zaten ayarlanmış."
+    echo "✅ X11 display permissions are already set."
 fi
 
-# 6. Gerekli klasörleri oluştur (Varsa zarar vermez)
-echo "📁 İndirme klasörleri oluşturuluyor/kontrol ediliyor..."
+# 6. Create necessary folders
+echo "📁 Creating/Checking download folders..."
 mkdir -p sdkm_downloads nvidia_sdk
 
-# 6.5 NFS Çekirdek Modülünü Yükle (Flash işlemi için şart)
-echo "🔧 Çekirdeğe NFS modülü yükleniyor (modprobe nfsd)..."
+# 6.5 Load NFS Kernel Module (Required for flash)
+echo "🔧 Loading NFS kernel module (modprobe nfsd)..."
 sudo modprobe nfsd || true
 
-# 7. Docker Container'ı Başlat
-echo "🚀 Docker container başlatılıyor..."
+# 7. Start Docker Container
+echo "🚀 Starting Docker container..."
 CONTAINER_NAME="jetson-sdk-manager"
 
-# Container zaten çalışıyorsa hata vermesin, sadece içine girelim
+# If container is already running, just exec into it
 if docker ps --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
-    echo "⚠️ Container ($CONTAINER_NAME) zaten çalışıyor. İçine giriliyor..."
+    echo "⚠️ Container ($CONTAINER_NAME) is already running. Executing inside..."
     sudo docker exec -it $CONTAINER_NAME bash -c "sdkmanager"
 else
-    # Container çalışmıyorsa başlat
+    # Start the container if not running
     sudo docker run -it --rm --init \
       --name $CONTAINER_NAME \
       --privileged \

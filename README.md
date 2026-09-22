@@ -1,6 +1,16 @@
-# Jetson Orin Nano Boot Environment (Recently, it is not working)
+# Jetson Orin Nano Boot Environment
 
 This repository provides a Dockerized, fully automated environment for flashing and configuring the Nvidia Jetson Orin Nano via the Nvidia SDK Manager. By running this in a Docker container, it ensures that your host operating system (whether it is Arch Linux, another Linux distro, or Windows via WSL2) remains clean and unaffected by SDK dependencies.
+
+## Key Features & Automated Fixes
+This environment is configured to automatically resolve several known SDK Manager bugs and network restrictions:
+* **Host Conflict Resolution:** Safely stops host `rpcbind` and `nfs-server` services before launching to prevent port collisions.
+* **99% Hang Fix:** Automatically monitors and kills the `rpc.mountd` zombie process that holds pipes open, which previously caused the SDK Manager to hang indefinitely at 99% during the flash phase.
+* **Network & Firewall Bypass:** Injects a custom `device_mode_host_setup.sh` script to ensure the Jetson target has internet access during component installation:
+  * Overrides Docker's default `DROP` policy on the `FORWARD` chain.
+  * Enforces a TTL of 64 (`-j TTL --ttl-set 64`) to bypass mobile hotspot tethering restrictions.
+  * Runs a local `dnsmasq` proxy inside the container to forward Jetson DNS queries to the host's `systemd-resolved`, bypassing strict ISP Port-53 blocks.
+* **One-Shot Execution:** Everything runs via a single `./jetson_boot.sh` script.
 
 ## Prerequisites
 
@@ -36,23 +46,13 @@ usbipd attach --wsl --busid <BUS_ID>
 ```
 *(Replace `<BUS_ID>` with the bus ID of the NVIDIA device from the list).*
 
-## Step 3: Run the Automation Script (One-Shot!)
-We have fully automated the image building, display permissions, NFS/rpcbind host conflict resolution, and container launching into a single script.
-
-Simply open a terminal in this folder and run:
+## Step 3: Run the Automation Script
+Open a terminal in this folder and run:
 ```bash
 ./jetson_boot.sh
 ```
 
-The script will:
-* Build the docker image automatically if it doesn't exist.
-* Check if the SDK Manager `.deb` file is present.
-* Stop conflicting host services (`rpcbind.socket`, `rpcbind`, `nfs-server`) safely.
-* Load the necessary kernel modules (`nfsd`).
-* Set up X11 display permissions.
-* Automatically handle network spoofing and zombie process cleanup internally.
-* Launch the SDK Manager GUI on your screen.
-
+The script will build the docker image automatically, handle network spoofing and zombie process cleanup internally, and launch the SDK Manager GUI on your screen.
 Once the UI opens, just follow the SDK Manager steps. The flashing process and the subsequent Target Components installation (via SSH) will execute seamlessly.
 
 ## Notes
@@ -64,10 +64,3 @@ Once the UI opens, just follow the SDK Manager steps. The flashing process and t
   ```bash
   sudo rm -rf nvidia_sdk/*
   ```
-
-## Proxy Configuration
-If you are behind a proxy, you can modify the `docker run` command inside `jetson_boot.sh` by adding:
-```bash
-  -e http_proxy=http://<proxy-ip>:<port> \
-  -e https_proxy=http://<proxy-ip>:<port> \
-```

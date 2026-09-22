@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     locales \
     libgconf-2-4 \
+    dnsutils \
+    network-manager \
+    iputils-ping \
     libcanberra-gtk-module \
     libcanberra-gtk3-module \
     libnss3 \

@@ -21,8 +21,8 @@
             if ! ip addr show "$iface" | grep -q "192.168.55.100"; then
                 sudo ip link set dev "$iface" up 2>/dev/null
                 sudo ip addr add 192.168.55.100/24 dev "$iface" 2>/dev/null
-                sudo iptables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
-                sudo ip6tables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
+                sudo iptables -C INPUT -i "$iface" -j ACCEPT 2>/dev/null || sudo iptables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
+                sudo ip6tables -C INPUT -i "$iface" -j ACCEPT 2>/dev/null || sudo ip6tables -I INPUT -i "$iface" -j ACCEPT 2>/dev/null
             fi
             if ! ip addr show "$iface" | grep -q "fc00:1:1:0::1"; then
                 sudo ip -6 addr add fc00:1:1:0::1/64 dev "$iface" 2>/dev/null
@@ -42,9 +42,9 @@ if ls /sdk/sdkmanager*.deb 1> /dev/null 2>&1; then
     sudo -E apt-get install -y "$DEB_FILE"
     
     # Inject Antigravity Custom Setup Script to bypass ISP and Firewall blocks
-    if [ -f /custom_setup.sh ]; then
+    if [ -f /sdk/custom_setup.sh ]; then
         echo "Injecting custom device setup script..."
-        sudo cp /custom_setup.sh /opt/nvidia/sdkmanager/resources/app/scripts/linux/device_mode_host_setup.sh
+        sudo cp /sdk/custom_setup.sh /opt/nvidia/sdkmanager/resources/app/scripts/linux/device_mode_host_setup.sh
         sudo chmod +x /opt/nvidia/sdkmanager/resources/app/scripts/linux/device_mode_host_setup.sh
     fi
 fi
@@ -55,7 +55,7 @@ fi
         if pgrep -x "rpc.mountd" > /dev/null; then
             # If flash script is no longer running, kill rpc.mountd to close the pipe and unhang SDK Manager
             if ! pgrep -f "flash.sh" > /dev/null; then
-                sudo killall rpc.mountd 2>/dev/null || true
+                sudo pkill -x rpc.mountd 2>/dev/null || true
             fi
         fi
         sleep 5
@@ -65,12 +65,13 @@ fi
 # Patch NVIDIA's Docker detection to force NFS server setup inside container
 (
     while true; do
-        if [ -f /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func ]; then
-            if ! grep -q "is_inside_docker_disabled" /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func; then
-                sudo sed -i 's/is_inside_docker()/is_inside_docker_disabled()/' /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func
-                echo -e "\nis_inside_docker() {\n    return 1\n}" | sudo tee -a /home/nvidia/nvidia/nvidia_sdk/JetPack_6.2.3_Linux_JETSON_ORIN_NANO_TARGETS/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func > /dev/null
+        for func in /home/nvidia/nvidia/nvidia_sdk/JetPack_*/Linux_for_Tegra/tools/kernel_flash/l4t_network_flash.func; do
+            [ -f "$func" ] || continue
+            if ! grep -q "is_inside_docker_disabled" "$func"; then
+                sudo sed -i 's/is_inside_docker()/is_inside_docker_disabled()/' "$func"
+                echo -e "\nis_inside_docker() {\n    return 1\n}" | sudo tee -a "$func" > /dev/null
             fi
-        fi
+        done
         sleep 5
     done
 ) &

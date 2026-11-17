@@ -1,2 +1,7 @@
 sdkm_downloads/
 nvidia_sdk/
+sdkmanager_*.deb
+sdkm_logs*/
+SDKM_logs_*.zip
+ps*.txt
+
